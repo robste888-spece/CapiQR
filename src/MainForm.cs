@@ -18,7 +18,8 @@ namespace CapiQR
 
         public MainForm()
         {
-            Text = "CapiQR — QR Link Scanner";
+            string displayVersion = GetDisplayVersion();
+            Text = "CapiQR v" + displayVersion + " — QR Link Scanner";
             ClientSize = new Size(510, 545);
             MinimumSize = new Size(526, 584);
             MaximumSize = new Size(526, 584);
@@ -142,12 +143,19 @@ namespace CapiQR
 
             var footer = new Label
             {
-                Text = "ปิดหน้าต่าง = ซ่อนไว้ที่ System tray  •  คลิกขวาไอคอนเพื่อ Exit",
+                Text = "CapiQR v" + GetDisplayVersion() + "  •  ปิดหน้าต่าง = System tray  •  คลิกขวาเพื่อ Exit",
                 ForeColor = Palette.Muted,
                 AutoSize = true,
-                Location = new Point(59, 499)
+                Font = new Font("Segoe UI", 8.5f),
+                Location = new Point(48, 499)
             };
             Controls.Add(footer);
+        }
+
+        private static string GetDisplayVersion()
+        {
+            Version version = typeof(MainForm).Assembly.GetName().Version;
+            return version.Major + "." + version.Minor + "." + version.Build;
         }
 
         private void BuildTrayIcon()
