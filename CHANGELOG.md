@@ -2,9 +2,15 @@
 
 ## Unreleased
 
+## 1.1.0 — 2026-11-08
+
 - เพิ่ม GitHub Actions สำหรับ Build EXE/Portable ZIP ทุก Push และ Pull Request
 - สร้าง Tag และ GitHub Release อัตโนมัติเมื่อไฟล์ `VERSION` เปลี่ยนเป็นเลขรุ่นใหม่
 - ใช้ `VERSION` เป็นแหล่งเลขรุ่นเดียวสำหรับ UI, EXE, ZIP และ Release
+- เพิ่ม Automatic Update Check จาก GitHub Release เมื่อเปิดโปรแกรม
+- เพิ่มปุ่มและเมนู System tray สำหรับตรวจสอบอัปเดตด้วยตนเอง
+- เมื่อมีรุ่นใหม่ โปรแกรมเปิดหน้า GitHub Release ให้ผู้ใช้ดาวน์โหลดเอง; ไม่ดาวน์โหลดหรือรัน EXE แบบเงียบ
+- ปรับข้อความ Privacy ให้ระบุว่าภาพ/ผล QR ไม่ออกจากเครื่อง และเชื่อม GitHub เฉพาะขอเลขเวอร์ชัน
 
 ## 1.0.0 — 2026-11-07
 

@@ -11,8 +11,10 @@ namespace CapiQR
         private NotifyIcon _trayIcon;
         private Icon _appIcon;
         private Label _hotkeyLabel;
+        private RoundedButton _updateButton;
         private bool _hotkeyRegistered;
         private bool _isScanning;
+        private bool _checkingForUpdates;
         private bool _exiting;
         private string _hotkeyText = "Ctrl + Shift + Q";
 
@@ -131,13 +133,24 @@ namespace CapiQR
             startupCheck.CheckedChanged += StartupChanged;
             settingsCard.Controls.Add(startupCheck);
 
+            _updateButton = new RoundedButton
+            {
+                Text = "ตรวจสอบอัปเดต",
+                ButtonColor = Palette.BrownSoft,
+                HoverColor = Palette.Brown,
+                Location = new Point(292, 45),
+                Size = new Size(140, 38)
+            };
+            _updateButton.Click += async delegate { await CheckForUpdatesAsync(true); };
+            settingsCard.Controls.Add(_updateButton);
+
             var privacy = new Label
             {
-                Text = "🔒 ภาพและผล QR ประมวลผลในเครื่องเท่านั้น ไม่อัปโหลดออกอินเทอร์เน็ต",
+                Text = "ภาพ/ผล QR อยู่ในเครื่อง • เช็กเวอร์ชันกับ GitHub เท่านั้น",
                 ForeColor = Palette.Green,
                 AutoSize = true,
                 BackColor = Color.Transparent,
-                Location = new Point(30, 91)
+                Location = new Point(30, 100)
             };
             settingsCard.Controls.Add(privacy);
 
@@ -154,8 +167,13 @@ namespace CapiQR
 
         private static string GetDisplayVersion()
         {
-            Version version = typeof(MainForm).Assembly.GetName().Version;
+            Version version = GetCurrentVersion();
             return version.Major + "." + version.Minor + "." + version.Build;
+        }
+
+        private static Version GetCurrentVersion()
+        {
+            return typeof(MainForm).Assembly.GetName().Version;
         }
 
         private void BuildTrayIcon()
@@ -168,6 +186,10 @@ namespace CapiQR
             var showItem = new ToolStripMenuItem("เปิด CapiQR");
             showItem.Click += delegate { ShowMainWindow(); };
             menu.Items.Add(showItem);
+
+            var updateItem = new ToolStripMenuItem("ตรวจสอบอัปเดต");
+            updateItem.Click += async delegate { await CheckForUpdatesAsync(true); };
+            menu.Items.Add(updateItem);
             menu.Items.Add(new ToolStripSeparator());
 
             var exitItem = new ToolStripMenuItem("Exit");
@@ -194,13 +216,70 @@ namespace CapiQR
             RegisterHotkey();
         }
 
-        protected override void OnShown(EventArgs e)
+        protected override async void OnShown(EventArgs e)
         {
             base.OnShown(e);
             if (Environment.GetCommandLineArgs().Any(delegate(string arg) { return string.Equals(arg, "--startup", StringComparison.OrdinalIgnoreCase); }))
             {
                 Hide();
                 _trayIcon.ShowBalloonTip(2500, "CapiQR พร้อมแล้ว", "กด " + _hotkeyText + " เพื่อสแกน QR บนจอ", ToolTipIcon.Info);
+            }
+
+            await System.Threading.Tasks.Task.Delay(900);
+            if (!IsDisposed)
+                await CheckForUpdatesAsync(false);
+        }
+
+        private async System.Threading.Tasks.Task CheckForUpdatesAsync(bool showStatusWhenCurrent)
+        {
+            if (_checkingForUpdates)
+                return;
+
+            _checkingForUpdates = true;
+            if (_updateButton != null)
+            {
+                _updateButton.Enabled = false;
+                _updateButton.Text = "กำลังตรวจ...";
+            }
+
+            try
+            {
+                UpdateCheckResult result = await UpdateChecker.CheckAsync(GetCurrentVersion());
+                if (!result.IsSuccess)
+                {
+                    if (showStatusWhenCurrent)
+                    {
+                        MessageBox.Show(
+                            "ตรวจสอบอัปเดตไม่สำเร็จ\n\n" + result.ErrorMessage + "\nโปรแกรมยังใช้งานสแกน QR ได้ตามปกติ",
+                            "CapiQR",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                    }
+                    return;
+                }
+
+                if (result.IsUpdateAvailable)
+                {
+                    using (var updateForm = new UpdateAvailableForm(GetDisplayVersion(), result.LatestVersion, result.ReleaseUrl))
+                        updateForm.ShowDialog();
+                }
+                else if (showStatusWhenCurrent)
+                {
+                    MessageBox.Show(
+                        "CapiQR v" + GetDisplayVersion() + " เป็นรุ่นล่าสุดแล้ว",
+                        "CapiQR",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+            }
+            finally
+            {
+                _checkingForUpdates = false;
+                if (_updateButton != null && !_updateButton.IsDisposed)
+                {
+                    _updateButton.Enabled = true;
+                    _updateButton.Text = "ตรวจสอบอัปเดต";
+                }
             }
         }
 

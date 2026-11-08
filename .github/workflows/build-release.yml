@@ -46,6 +46,10 @@ jobs:
         shell: pwsh
         run: .\build.ps1 -Version '${{ steps.version.outputs.version }}'
 
+      - name: Test update version rules
+        shell: pwsh
+        run: .\tests\Test-UpdateChecker.ps1
+
       - name: Verify build outputs and embedded version
         shell: pwsh
         run: |
