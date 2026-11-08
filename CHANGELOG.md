@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- เพิ่ม GitHub Actions สำหรับ Build EXE/Portable ZIP ทุก Push และ Pull Request
+- สร้าง Tag และ GitHub Release อัตโนมัติเมื่อไฟล์ `VERSION` เปลี่ยนเป็นเลขรุ่นใหม่
+- ใช้ `VERSION` เป็นแหล่งเลขรุ่นเดียวสำหรับ UI, EXE, ZIP และ Release
+
 ## 1.0.0 — 2026-11-07
 
 - เพิ่ม Global Hotkey `Ctrl + Shift + Q` และ fallback `Ctrl + Alt + Q`

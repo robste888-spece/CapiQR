@@ -4,7 +4,7 @@
 
 ## ดาวน์โหลดสำหรับทีมงาน
 
-ดาวน์โหลดรุ่นพร้อมใช้จากหน้า [Releases](https://github.com/robste888-spece/CapiQR/releases/latest) แล้วแตกไฟล์ `CapiQR-Portable-v1.0.0.zip` จากนั้นเปิด `CapiQR.exe`
+ดาวน์โหลดรุ่นพร้อมใช้จากหน้า [Releases](https://github.com/robste888-spece/CapiQR/releases/latest) แล้วเลือกไฟล์ `CapiQR-Portable-v<version>.zip` จากนั้นแตก ZIP และเปิด `CapiQR.exe`
 
 โปรแกรมเป็น Portable และรวมไลบรารีอ่าน QR ไว้ใน EXE แล้ว ไม่ต้องติดตั้ง .NET Runtime หรือ DLL เพิ่มบน Windows 11
 
@@ -36,7 +36,27 @@
 
 รัน `pwsh -ExecutionPolicy Bypass -File .\build.ps1`
 
+`build.ps1` จะอ่านเลขรุ่นจากไฟล์ `VERSION` แล้วฝังเป็น Assembly/File Version ใน EXE พร้อมสร้าง ZIP ชื่อเดียวกับรุ่น สามารถทดสอบเลขรุ่นอื่นโดยใช้ `pwsh -File .\build.ps1 -Version 1.1.0`
+
 ต้องมี Windows 11/.NET Framework 4.8 (มีใน Windows 11) โค้ดใช้ ZXing.Net 0.16.10 ภายใต้ Apache-2.0; ดู `vendor\ZXing.Net\LICENSE.txt`
+
+## Automatic Build และ Release
+
+GitHub Actions ที่ `.github/workflows/build-release.yml` ทำงานดังนี้:
+
+- ทุก Push หรือ Pull Request เข้า `main`: Build และตรวจ File Version แล้วเก็บ EXE/ZIP เป็น Artifact 30 วัน
+- Push เข้า `main` โดยยังใช้เลขเดิม: Build เพื่อ QA แต่ไม่เขียนทับ Release เดิม
+- Push เข้า `main` หลังเปลี่ยน `VERSION` เป็นเลขใหม่: สร้าง Tag และ GitHub Release พร้อมแนบ EXE/ZIP อัตโนมัติ
+
+ขั้นตอนออกรุ่นใหม่:
+
+1. แก้ Source และทดสอบในเครื่อง
+2. เปลี่ยน `VERSION` ตาม Semantic Versioning เช่น เพิ่ม Function จาก `1.0.0` เป็น `1.1.0`
+3. เพิ่มรายละเอียดใน `CHANGELOG.md`
+4. Commit และ Push เข้า `main`
+5. ตรวจผลที่ [GitHub Actions](https://github.com/robste888-spece/CapiQR/actions) และดาวน์โหลดจากหน้า Releases
+
+Workflow ยังไม่ได้ทำ Code Signing ดังนั้น SmartScreen อาจยังเตือน แม้ไฟล์จะ Build จาก GitHub สำเร็จ
 
 ## ข้อจำกัด
 

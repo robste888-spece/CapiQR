@@ -1,0 +1,132 @@
+name: Build and release CapiQR
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: capiqr-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Windows EXE
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      artifact: ${{ steps.version.outputs.artifact }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Read and validate version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content -LiteralPath VERSION -Raw).Trim()
+          if ($version -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
+            throw "VERSION must use Major.Minor.Patch, for example 1.1.0. Received: $version"
+          }
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=v$version" >> $env:GITHUB_OUTPUT
+          "artifact=CapiQR-v$version-$env:GITHUB_RUN_ID" >> $env:GITHUB_OUTPUT
+
+      - name: Build EXE and portable ZIP
+        shell: pwsh
+        run: .\build.ps1 -Version '${{ steps.version.outputs.version }}'
+
+      - name: Verify build outputs and embedded version
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $expectedFileVersion = "$version.0"
+          $exe = 'dist\CapiQR.exe'
+          $zip = "dist\CapiQR-Portable-v$version.zip"
+
+          if (-not (Test-Path -LiteralPath $exe)) { throw "Missing output: $exe" }
+          if (-not (Test-Path -LiteralPath $zip)) { throw "Missing output: $zip" }
+
+          $actualFileVersion = (Get-Item -LiteralPath $exe).VersionInfo.FileVersion
+          if ($actualFileVersion -ne $expectedFileVersion) {
+            throw "EXE version mismatch. Expected $expectedFileVersion, received $actualFileVersion"
+          }
+
+          $exeHash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $zipHash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          @"
+          ## CapiQR build v$version
+
+          - EXE file version: ``$actualFileVersion``
+          - CapiQR.exe SHA-256: ``$exeHash``
+          - Portable ZIP SHA-256: ``$zipHash``
+          "@ >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.version.outputs.artifact }}
+          path: |
+            dist/CapiQR.exe
+            dist/CapiQR-Portable-v${{ steps.version.outputs.version }}.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish new version
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download verified build
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+          path: release-assets
+
+      - name: Create GitHub Release when VERSION is new
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.build.outputs.version }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          $expectedAssets = @(
+            'CapiQR.exe',
+            "CapiQR-Portable-v$env:RELEASE_VERSION.zip"
+          )
+
+          $existingAssets = gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --json assets --jq '.assets[].name' 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            $missingAssets = $expectedAssets | Where-Object { $_ -notin $existingAssets }
+            if ($missingAssets) {
+              throw "Release $env:RELEASE_TAG exists but is missing assets: $($missingAssets -join ', ')"
+            }
+
+            "Release $env:RELEASE_TAG already exists. Build artifact was created; no release was replaced." | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            exit 0
+          }
+
+          gh release create $env:RELEASE_TAG `
+            'release-assets\CapiQR.exe' `
+            "release-assets\CapiQR-Portable-v$env:RELEASE_VERSION.zip" `
+            --repo $env:GITHUB_REPOSITORY `
+            --target $env:GITHUB_SHA `
+            --title "CapiQR v$env:RELEASE_VERSION" `
+            --generate-notes
+
+          if ($LASTEXITCODE -ne 0) { throw "Unable to create release $env:RELEASE_TAG" }
+          "Published CapiQR $env:RELEASE_TAG with EXE and portable ZIP." | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
