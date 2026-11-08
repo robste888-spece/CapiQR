@@ -2,7 +2,7 @@
 
 โปรแกรมขนาดเล็กสำหรับอ่าน QR Code ที่แสดงอยู่บนหน้าจอ Windows โดยไม่ต้องใช้โทรศัพท์ เหมาะกับ QR ใน Outlook, Mail, PDF, Browser และรูปภาพ
 
-## ดาวน์โหลดสำหรับทีมงาน
+## ดาวน์โหลด CapiQR
 
 ดาวน์โหลดรุ่นพร้อมใช้จากหน้า [Releases](https://github.com/robste888-spece/CapiQR/releases/latest) แล้วเลือกไฟล์ `CapiQR-Portable-v<version>.zip` จากนั้นแตก ZIP และเปิด `CapiQR.exe`
 
